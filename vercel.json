@@ -3,15 +3,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "env": {
-    "GEMINI_API_KEY": {
-      "description": "Google Gemini API key for AI prescription analysis",
-      "placeholder": "your_gemini_api_key",
-      "required": true
-    }
-  },
   "regions": ["blr1"],
-  "ignoreCommand": "git check-ignore -v $FILE",
   "git": {
     "deploymentEnabled": true
   }
