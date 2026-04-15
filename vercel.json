@@ -3,7 +3,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["blr1"],
   "git": {
     "deploymentEnabled": true
   }
