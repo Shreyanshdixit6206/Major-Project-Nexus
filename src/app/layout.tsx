@@ -4,6 +4,7 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import CartHeader from "@/components/CartHeader";
 import AuthNav from "@/components/AuthNav";
+import NavLinks from "@/components/NavLinks";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -62,13 +63,7 @@ export default function RootLayout({
           {/* Navigation */}
           <nav className="bg-navy text-white sticky top-0 z-30 shadow-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between">
-              <ul className="flex space-x-8 py-3 text-sm font-semibold uppercase tracking-wider overflow-x-auto whitespace-nowrap">
-                <li><a href="/" className="hover:text-saffron transition-colors">Home</a></li>
-                <li><a href="/store" className="hover:text-saffron transition-colors">Medicine Store</a></li>
-                <li><a href="/vault" className="hover:text-saffron transition-colors">Health Vault</a></li>
-                <li><a href="/ai-consult" className="hover:text-saffron transition-colors">AI Consult</a></li>
-                <li><a href="/about" className="hover:text-saffron transition-colors">About</a></li>
-              </ul>
+              <NavLinks />
               <div className="py-3 text-sm font-semibold uppercase tracking-wider flex items-center pr-2 space-x-6">
                  <AuthNav />
                  <CartHeader />

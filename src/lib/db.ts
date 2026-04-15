@@ -1,12 +1,32 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 // Singleton instance to prevent multiple connections in dev mode
 let db: Database.Database | null = null;
 
+// Check if running on Vercel (read-only filesystem)
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
+
+// On Vercel, use /tmp for writable SQLite files - the main DB in the bundle is read-only
+function getDbPath(): string {
+  const bundledDbPath = path.join(process.cwd(), 'inventory.db');
+
+  if (isVercel) {
+    const tmpDbPath = '/tmp/inventory.db';
+    // Copy the bundled DB to /tmp if it doesn't exist there yet
+    if (!fs.existsSync(tmpDbPath) && fs.existsSync(bundledDbPath)) {
+      fs.copyFileSync(bundledDbPath, tmpDbPath);
+    }
+    return tmpDbPath;
+  }
+
+  return bundledDbPath;
+}
+
 export function getDb() {
   if (!db) {
-    const dbPath = path.join(process.cwd(), 'inventory.db');
+    const dbPath = getDbPath();
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     

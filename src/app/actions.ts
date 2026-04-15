@@ -43,18 +43,26 @@ export async function getCommonMedicines() {
   return await engineGetCommonMedicines();
 }
 
-export async function saveHealthDocument(token: string, documentName: string, documentText: string): Promise<boolean> {
+export async function saveHealthDocument(token: string, documentName: string, documentText: string): Promise<{ success: boolean; message: string }> {
   try {
     const abhaId = await verifyJwt(token);
-    if (!abhaId) return false;
+    if (!abhaId) return { success: false, message: 'Unauthorized. Please login again.' };
 
     const db = getDb();
+    // Log info for debugging
+    console.log(`Uploading document: ${documentName} for ABHA: ${abhaId}. Size: ${Math.round(documentText.length / 1024)} KB`);
+    
+    if (documentText.length > 5 * 1024 * 1024) { // 5MB limit for safety in SQL
+       return { success: false, message: 'File too large. Max size is 5MB.' };
+    }
+
     const stmt = db.prepare(`INSERT INTO health_vault (abha_id, document_name, document_text) VALUES (?, ?, ?)`);
     stmt.run(abhaId, documentName, documentText);
-    return true;
-  } catch (error) {
+    
+    return { success: true, message: 'Document successfully secured in vault.' };
+  } catch (error: any) {
     console.error("Vault save error:", error);
-    return false;
+    return { success: false, message: error.message || 'Storage engine error. Please try again.' };
   }
 }
 

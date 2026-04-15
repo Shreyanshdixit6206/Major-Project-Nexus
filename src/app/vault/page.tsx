@@ -23,6 +23,8 @@ export default function SecurityVaultPage() {
 
   // History
   const [history, setHistory] = useState<{id: number, document_name: string, uploaded_at: string}[]>([]);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     if (user?.abhaId) {
@@ -71,15 +73,22 @@ export default function SecurityVaultPage() {
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
     if (!docName || !fileData || !token) return;
+    setStatusMessage('');
+    setIsError(false);
 
     startSubmitting(async () => {
-      const ok = await saveHealthDocument(token, docName, fileData);
-      if (ok) {
+      const result = await saveHealthDocument(token, docName, fileData);
+      if (result.success) {
         setDocName('');
         setFileData('');
         setFileName('');
+        setStatusMessage(result.message);
+        setIsError(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         await loadDocs(token);
+      } else {
+        setStatusMessage(result.message);
+        setIsError(true);
       }
     });
   };
@@ -180,6 +189,13 @@ export default function SecurityVaultPage() {
             <UploadCloud className="mr-2 h-5 w-5 text-saffron" />
             Upload New Record
           </h2>
+
+          {statusMessage && (
+            <div className={`p-4 rounded mb-4 text-sm font-medium border ${isError ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'} animate-fadeIn`}>
+              {statusMessage}
+            </div>
+          )}
+
           <form onSubmit={handleUpload} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Select File (PDF, JPEG, DOCX)</label>

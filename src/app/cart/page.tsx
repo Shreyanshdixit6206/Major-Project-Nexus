@@ -2,14 +2,17 @@
 
 import { useCart } from '@/context/CartContext';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Trash2, CreditCard, ShoppingBag, ArrowRight } from 'lucide-react';
 import { createOrder } from '@/app/actions';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function CartPage() {
   const { cart, removeFromCart, total, clearCart } = useCart();
+  const router = useRouter();
   const handleCheckout = () => {
-    window.location.href = '/checkout';
+    router.push('/checkout');
   };
 
   return (
@@ -21,7 +24,7 @@ export default function CartPage() {
         <div className="bg-slate-50 border border-slate-200 rounded p-10 text-center">
           <ShoppingBag className="mx-auto h-12 w-12 text-slate-300 mb-4" />
           <p className="text-slate-500 text-lg">Your cart is empty.</p>
-          <a href="/store" className="mt-4 inline-block bg-navy text-white px-6 py-2 rounded font-medium hover:bg-blue-900 transition-colors">Start Shopping</a>
+          <Link href="/store" className="mt-4 inline-block bg-navy text-white px-6 py-2 rounded font-medium hover:bg-blue-900 transition-colors">Start Shopping</Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

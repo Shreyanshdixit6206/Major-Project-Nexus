@@ -7,6 +7,29 @@
   --color-gov-bg: #F8FAFC;
 }
 
+/* Enable View Transitions for smooth page navigation */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: fade-out 0.15s ease-out;
+}
+
+::view-transition-new(root) {
+  animation: fade-in 0.2s ease-in;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @layer base {
   body {
     background-color: var(--color-gov-bg);
@@ -14,6 +37,7 @@
     font-family: var(--font-inter), sans-serif;
   }
 }
+
 
 .gov-gradient {
   background: linear-gradient(90deg, var(--color-saffron) 0%, white 50%, var(--color-india-green) 100%);

@@ -2,7 +2,6 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { findGenericAlternatives, Medicine } from './actions';
-import { getDb } from '@/lib/db';
 import crypto from 'crypto';
 
 export interface AnalysisResult {
@@ -15,12 +14,25 @@ export interface AnalysisResult {
   overallCostSavings: number;
 }
 
+// Safe DB getter — returns null if DB is unavailable (e.g., native module fails on some runtimes)
+function getSafeDb() {
+  try {
+    const { getDb } = require('@/lib/db');
+    return getDb();
+  } catch (e) {
+    console.warn('DB not available for AI cache, continuing without cache:', e);
+    return null;
+  }
+}
+
 export async function analyzePrescriptionText(prescriptionText: string, attachedFile?: { mimeType: string, base64: string }): Promise<AnalysisResult | null> {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
-    throw new Error('Gemini API Key is missing or invalid.');
+  // Validate API key exists on the server
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+    throw new Error('Gemini API Key is not configured. Please add GEMINI_API_KEY to your environment variables on Vercel.');
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const prompt = `
@@ -47,20 +59,37 @@ export async function analyzePrescriptionText(prescriptionText: string, attached
       ];
     }
 
+    // Cache logic — soft fail if DB is unavailable
     const hashData = prescriptionText + (attachedFile?.base64 || '');
     const hashKey = crypto.createHash('md5').update(hashData).digest('hex');
-    const db = getDb();
     
-    // Check Cache First
-    const cached = db.prepare('SELECT response_json FROM ai_cache WHERE hash_key = ?').get(hashKey) as any;
+    let db: any = null;
+    try {
+      db = getSafeDb();
+    } catch (e) {
+      // DB unavailable, continue without cache
+    }
     
+    // Check Cache First (only if DB is available)
     let outputText = "[]";
-    if (cached) {
-      console.log('Serving from AI DB Cache! Cost: $0');
-      outputText = cached.response_json;
-    } else {
+    let cacheHit = false;
+    
+    if (db) {
+      try {
+        const cached = db.prepare('SELECT response_json FROM ai_cache WHERE hash_key = ?').get(hashKey) as any;
+        if (cached) {
+          console.log('Serving from AI DB Cache! Cost: $0');
+          outputText = cached.response_json;
+          cacheHit = true;
+        }
+      } catch (e) {
+        console.warn('Cache read failed:', e);
+      }
+    }
+    
+    if (!cacheHit) {
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash', // Using stable model version
+        model: 'gemini-2.0-flash',
         contents: payloadContents,
         config: {
           maxOutputTokens: 600,
@@ -69,10 +98,14 @@ export async function analyzePrescriptionText(prescriptionText: string, attached
         }
       });
       outputText = response.text || "[]";
-      try {
-        db.prepare('INSERT INTO ai_cache (hash_key, response_json) VALUES (?, ?)').run(hashKey, outputText);
-      } catch (e) {
-        console.error('Failed to cache AI response', e);
+      
+      // Try to cache the response (soft fail)
+      if (db) {
+        try {
+          db.prepare('INSERT OR REPLACE INTO ai_cache (hash_key, response_json) VALUES (?, ?)').run(hashKey, outputText);
+        } catch (e) {
+          console.warn('Cache write failed:', e);
+        }
       }
     }
 
@@ -90,7 +123,6 @@ export async function analyzePrescriptionText(prescriptionText: string, attached
 
     for (const drug of identifiedDrugsJson) {
       if (drug.activeIngredient) {
-        // Find generic alternatives
         const generics = await findGenericAlternatives(drug.activeIngredient);
         identifiedDrugs.push({
           name: drug.name,
@@ -98,9 +130,7 @@ export async function analyzePrescriptionText(prescriptionText: string, attached
           genericsFound: generics
         });
         
-        // Mock a savings calculation based on top generic found
         if (generics.length > 0) {
-          // Assume branded was expensive
           savings += Math.floor(Math.random() * 200) + 50; 
         }
       }
@@ -112,8 +142,18 @@ export async function analyzePrescriptionText(prescriptionText: string, attached
       overallCostSavings: savings
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Analysis error:", error);
-    throw error;
+    // Provide a user-friendly error message
+    if (error.message?.includes('API key')) {
+      throw new Error('Invalid API configuration. Please check your Gemini API key.');
+    }
+    if (error.message?.includes('quota') || error.message?.includes('429')) {
+      throw new Error('API rate limit reached. Please try again in a few moments.');
+    }
+    if (error.message?.includes('not found') || error.message?.includes('404')) {
+      throw new Error('AI model temporarily unavailable. Please try again shortly.');
+    }
+    throw new Error(`AI analysis failed: ${error.message || 'Unknown error'}`);
   }
 }

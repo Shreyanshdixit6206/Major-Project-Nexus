@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // Enable smooth View Transitions for page navigation
+    viewTransition: true,
   },
   serverExternalPackages: ['better-sqlite3'],
 };
